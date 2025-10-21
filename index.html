@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Estoque de Placas Eletrônicas - SISTEMA SEGURO</title>
+    
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- SheetJS (para exportação Excel) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #00ff88;
+            --primary-dark: #00cc6a;
+            --bg-dark: #121212;
+            --bg-card: #1e1e1e;
+            --text-light: #f8f9fa;
+            --text-muted: #adb5bd;
+            --laranja-laboratorio: #ffa500;
+        }
+        
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            padding-top: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .navbar {
+            background-color: #000 !important;
+            border-bottom: 2px solid var(--primary-color);
+        }
+        
+        .navbar-brand, .nav-link {
+            color: var(--primary-color) !important;
+        }
+        
+        .nav-link:hover {
+            color: var(--primary-dark) !important;
+        }
+        
+        .nav-link.active {
+            font-weight: bold;
+            color: var(--primary-color) !important;
+            background-color: rgba(0, 255, 136, 0.1);
+            border-radius: 5px;
+        }
+        
+        .status-online {
+            color: var(--primary-color);
+        }
+        
+        .status-offline {
+            color: #ff6b6b;
+        }
+        
+        .security-badge {
+            font-size: 0.7em;
+            margin-left: 5px;
+        }
+        
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid #333;
+            color: var(--text-light);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-header {
+            background-color: #000;
+            border-bottom: 1px solid #333;
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+        
+        .table {
+            color: var(--text-light);
+        }
+        
+        .table th {
+            background-color: #000;
+            color: var(--primary-color);
+            border-color: #333;
+            font-weight: 600;
+        }
+        
+        .table td {
+            border-color: #333;
+        }
+        
+        .table-hover tbody tr:hover {
+            background-color: rgba(0, 255, 136, 0.1);
+            color: var(--text-light);
+        }
+        
+        .form-control, .form-select {
+            background-color: #2d2d2d;
+            border: 1px solid #444;
+            color: var(--text-light);
+        }
+        
+        .form-control:focus, .form-select:focus {
+            background-color: #2d2d2d;
+            border-color: var(--primary-color);
+            color: var(--text-light);
+            box-shadow: 0 0 0 0.25rem rgba(0, 255, 136, 0.25);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: #000;
+            font-weight: bold;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+            border-color: var(--primary-dark);
+            color: #000;
+        }
+        
+        .dashboard-card {
+            transition: transform 0.3s ease;
+            border: 1px solid #333;
+            cursor: pointer;
+            height: 100%;
+        }
+        
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary-color);
+        }
+        
+        .low-stock {
+            background-color: rgba(255, 193, 7, 0.2) !important;
+        }
+        
+        .out-of-stock {
+            background-color: rgba(220, 53, 69, 0.2) !important;
+        }
+        
+        .page-section {
+            display: none;
+        }
+        
+        .active-section {
+            display: block;
+        }
+        
+        .entrada-badge {
+            background-color: var(--primary-color) !important;
+            color: #000;
+        }
+        
+        .saida-badge {
+            background-color: #ff6b6b !important;
+            color: #000;
+        }
+        
+        .action-buttons {
+            white-space: nowrap;
+        }
+        
+        .user-badge {
+            background-color: var(--primary-color);
+            color: #000;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+        
+        /* Modal de edição de lançamento */
+        .modal-content {
+            background-color: var(--bg-card);
+            color: var(--text-light);
+        }
+        
+        .modal-header {
+            border-bottom: 1px solid #333;
+        }
+        
+        .modal-footer {
+            border-top: 1px solid #333;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Novos estilos para o título e subtítulo */
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .page-title {
+            margin: 0;
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+        
+        .lab-subtitle {
+            color: var(--laranja-laboratorio);
+            font-size: 1.2rem;
+            font-weight: normal;
+            margin: 0;
+        }
+        
+        /* Botão de exportação */
+        .btn-export {
+            background-color: #28a745;
+            border-color: #28a745;
+            color: white;
+        }
+        
+        .btn-export:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
+            color: white;
+        }
+        
+        /* Melhorias para responsividade */
+        @media (max-width: 768px) {
+            .header-container {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .lab-subtitle {
+                margin-top: 0.5rem;
+            }
+            
+            .dashboard-card {
+                margin-bottom: 1rem;
+            }
+        }
+        
+        /* Estilo para cards de dashboard */
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Alertas personalizados */
+        .alert-custom {
+            border-left: 4px solid;
+            border-radius: 0.375rem;
+        }
+        
+        .alert-low {
+            border-left-color: #ffc107;
+            background-color: rgba(255, 193, 7, 0.1);
+        }
+        
+        .alert-out {
+            border-left-color: #dc3545;
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+        
+        /* Indicador de segurança */
+        .security-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #000;
+            border: 2px solid var(--primary-color);
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 0.8rem;
+            z-index: 1000;
+            max-width: 250px;
+        }
+        
+        .security-good {
+            border-color: #28a745;
+            background: #000;
+        }
+        
+        .security-warning {
+            border-color: #ffc107;
+            background: #000;
+        }
+        
+        .security-danger {
+            border-color: #dc3545;
+            background: #000;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-motherboard"></i> Controle de Estoque - SISTEMA SEGURO
+                <small class="status-online" id="status-conexao">
+                    <i class="bi bi-check-circle"></i> Conectando...
+                </small>
+                <span class="user-badge badge" id="modo-conexao">Supabase</span>
+                <span class="security-badge badge bg-warning" id="security-status">Configurar RLS</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" data-section="dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="estoque">Estoque</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="cadastro-placa">Cadastrar Placa</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="movimentar-estoque">Movimentar Estoque</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-section="historico-lancamentos">Histórico</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div id="alert-atualizacao" class="alert alert-info alert-dismissible fade show" style="display: none; margin: 0; border-radius: 0;">
+        <div class="container">
+            <span id="mensagem-atualizacao"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    </div>
+
+    <!-- Modal para editar lançamento -->
+    <div class="modal fade" id="modalEditarLancamento" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Lançamento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-editar-lancamento">
+                        <input type="hidden" id="editar-lancamento-id">
+                        <div class="mb-3">
+                            <label for="editar-quantidade" class="form-label">Quantidade</label>
+                            <input type="number" class="form-control" id="editar-quantidade" min="1" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editar-responsavel" class="form-label">Responsável</label>
+                            <input type="text" class="form-control" id="editar-responsavel" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editar-finalidade" class="form-label">Finalidade</label>
+                            <select class="form-select" id="editar-finalidade" required>
+                                <option value="">Selecione a finalidade</option>
+                                <option value="rancho_producao">Rancho de Produção</option>
+                                <option value="master">Master</option>
+                                <option value="retrabalho_adequacao">Retrabalho de adequação</option>
+                                <option value="adequacao">Adequação</option>
+                                <option value="devolucao_estoque">Devolução ao Estoque</option>
+                                <option value="sucata">Sucata</option>
+                                <option value="outros">Outros</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editar-data" class="form-label">Data</label>
+                            <input type="date" class="form-control" id="editar-data" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarEdicaoLancamento()">
+                        <span id="btn-salvar-text">Salvar Alterações</span>
+                        <span id="btn-salvar-loading" class="loading-spinner" style="display: none;"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section id="dashboard" class="page-section active-section">
+        <div class="container my-5">
+            <div class="header-container">
+                <h2 class="page-title">Dashboard de Placas Eletrônicas</h2>
+                <h3 class="lab-subtitle">Laboratório de Eletrônica - SISTEMA SEGURO</h3>
+            </div>
+            
+            <!-- Alertas de Configuração -->
+            <div id="alert-configuracao" class="alert alert-warning">
+                <h5><i class="bi bi-shield-check"></i> Configuração de Segurança Necessária</h5>
+                <p class="mb-2">Para proteger seus dados, configure o RLS no Supabase seguindo o guia abaixo.</p>
+                <button class="btn btn-sm btn-outline-primary" onclick="mostrarGuiaRLS()">
+                    <i class="bi bi-book"></i> Ver Guia de Configuração RLS
+                </button>
+            </div>
+            
+            <div class="row mb-5">
+                <div class="col-md-3 mb-3">
+                    <div class="card dashboard-card text-white bg-dark" onclick="irParaEstoque()">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="stat-label">Total de Placas</div>
+                                    <div id="total-placas" class="stat-number">0</div>
+                                </div>
+                                <div>
+                                    <i class="bi bi-motherboard" style="font-size: 2.5rem; color: var(--primary-color);"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card dashboard-card text-white bg-dark" onclick="irParaEstoque()">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="stat-label">Tipos de Placas</div>
+                                    <div id="tipos-placas" class="stat-number">0</div>
+                                </div>
+                                <div>
+                                    <i class="bi bi-collection" style="font-size: 2.5rem; color: var(--primary-color);"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card dashboard-card text-white bg-dark" onclick="irParaEstoque()">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="stat-label">Baixo Estoque</div>
+                                    <div id="baixo-estoque" class="stat-number">0</div>
+                                </div>
+                                <div>
+                                    <i class="bi bi-exclamation-triangle" style="font-size: 2.5rem; color: #ffc107;"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card dashboard-card text-white bg-dark" onclick="irParaEstoque()">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="stat-label">Sem Estoque</div>
+                                    <div id="sem-estoque" class="stat-number">0</div>
+                                </div>
+                                <div>
+                                    <i class="bi bi-x-circle" style="font-size: 2.5rem; color: #dc3545;"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">Visualização de Estoque</h5>
+                            <div>
+                                <select id="tipo-grafico" class="form-select form-select-sm" style="width: auto;">
+                                    <option value="bar">Gráfico de Barras</option>
+                                    <option value="line">Gráfico de Linhas</option>
+                                    <option value="pie">Gráfico de Pizza</option>
+                                    <option value="doughnut">Gráfico de Rosca</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="estoqueChart" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Alertas de Estoque</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="alertas-estoque">
+                                <div class="alert alert-info">Carregando dados...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Nova seção de exportação -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Exportação de Dados</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button class="btn btn-export mb-2" onclick="exportarEstoqueExcel()">
+                                    <i class="bi bi-file-earmark-excel"></i> Exportar Estoque para Excel
+                                </button>
+                                <button class="btn btn-export mb-2" onclick="exportarHistoricoExcel()">
+                                    <i class="bi bi-file-earmark-excel"></i> Exportar Histórico para Excel
+                                </button>
+                                <button class="btn btn-outline-primary mb-2" onclick="fazerBackupDados()">
+                                    <i class="bi bi-cloud-download"></i> Fazer Backup Completo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="estoque" class="page-section">
+        <div class="container my-5">
+            <div class="header-container">
+                <h2 class="page-title">Estoque de Placas Eletrônicas</h2>
+                <h3 class="lab-subtitle">Laboratório de Eletrônica</h3>
+            </div>
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+                    <h5 class="card-title mb-0">Lista de Placas em Estoque</h5>
+                    <div class="mt-2 mt-md-0">
+                        <button class="btn btn-export me-2" onclick="exportarEstoqueExcel()">
+                            <i class="bi bi-file-earmark-excel"></i> Exportar
+                        </button>
+                        <button class="btn btn-primary" onclick="abrirCadastroPlaca()">
+                            <i class="bi bi-plus-circle"></i> Nova Placa
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Descrição</th>
+                                    <th>Quantidade</th>
+                                    <th>Localização</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-estoque">
+                                <tr>
+                                    <td colspan="6" class="text-center">Nenhuma placa cadastrada</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="cadastro-placa" class="page-section">
+        <div class="container my-5">
+            <div class="header-container">
+                <h2 class="page-title" id="titulo-cadastro-placa">Cadastrar Nova Placa</h2>
+                <h3 class="lab-subtitle">Laboratório de Eletrônica</h3>
+            </div>
+            <div class="card">
+                <div class="card-body">
+                    <form id="form-placa">
+                        <input type="hidden" id="placa-id">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="codigo" class="form-label">Código da Placa *</label>
+                                <input type="text" class="form-control" id="codigo" required>
+                                <div class="form-text">Código único para identificar a placa</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="descricao" class="form-label">Descrição *</label>
+                                <input type="text" class="form-control" id="descricao" required>
+                                <div class="form-text">Descrição detalhada da placa</div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="quantidade" class="form-label">Quantidade Inicial *</label>
+                                <input type="number" class="form-control" id="quantidade" min="0" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="localizacao" class="form-label">Localização</label>
+                                <input type="text" class="form-control" id="localizacao">
+                                <div class="form-text">Local físico onde a placa está armazenada</div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label for="observacoes" class="form-label">Observações</label>
+                                <textarea class="form-control" id="observacoes" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <button type="button" class="btn btn-secondary me-2" onclick="cancelarCadastroPlaca()">Cancelar</button>
+                            <button type="submit" class="btn btn-primary" id="btn-salvar-placa">
+                                <span id="btn-placa-text">Salvar Placa</span>
+                                <span id="btn-placa-loading" class="loading-spinner" style="display: none;"></span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="movimentar-estoque" class="page-section">
+        <div class="container my-5">
+            <div class="header-container">
+                <h2 class="page-title">Movimentar Estoque</h2>
+                <h3 class="lab-subtitle">Laboratório de Eletrônica</h3>
+            </div>
+            
+            <!-- Formulário de Movimentação -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Registrar Nova Movimentação</h5>
+                </div>
+                <div class="card-body">
+                    <form id="form-movimentacao">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="placa-select" class="form-label">Placa *</label>
+                                <select class="form-select" id="placa-select" required>
+                                    <option value="">Selecione uma placa</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="tipo-movimentacao" class="form-label">Tipo de Movimentação *</label>
+                                <select class="form-select" id="tipo-movimentacao" required>
+                                    <option value="entrada">Entrada</option>
+                                    <option value="saida">Saída</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="quantidade-mov" class="form-label">Quantidade *</label>
+                                <input type="number" class="form-control" id="quantidade-mov" min="1" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="responsavel" class="form-label">Responsável *</label>
+                                <input type="text" class="form-control" id="responsavel" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="data-movimentacao" class="form-label">Data</label>
+                                <input type="date" class="form-control" id="data-movimentacao">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label for="finalidade" class="form-label">Finalidade *</label>
+                                <select class="form-select" id="finalidade" required>
+                                    <option value="">Selecione a finalidade</option>
+                                    <option value="rancho_producao">Rancho de Produção</option>
+                                    <option value="master">Master</option>
+                                    <option value="retrabalho_adequacao">Retrabalho de adequação</option>
+                                    <option value="adequacao">Adequação</option>
+                                    <option value="devolucao_estoque">Devolução ao Estoque</option>
+                                    <option value="sucata">Sucata</option>
+                                    <option value="outros">Outros</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <button type="button" class="btn btn-secondary me-2" onclick="cancelarMovimentacao()">Cancelar</button>
+                            <button type="submit" class="btn btn-primary" id="btn-registrar-movimentacao">
+                                <span id="btn-movimentacao-text">Registrar Movimentação</span>
+                                <span id="btn-movimentacao-loading" class="loading-spinner" style="display: none;"></span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="historico-lancamentos" class="page-section">
+        <div class="container my-5">
+            <div class="header-container">
+                <h2 class="page-title">Histórico de Lançamentos</h2>
+                <h3 class="lab-subtitle">Laboratório de Eletrônica</h3>
+            </div>
+            
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+                    <h5 class="card-title mb-0">Registros de Entradas e Saídas</h5>
+                    <div class="mt-2 mt-md-0">
+                        <button class="btn btn-export me-2" onclick="exportarHistoricoExcel()">
+                            <i class="bi bi-file-earmark-excel"></i> Exportar
+                        </button>
+                        <span class="badge bg-primary" id="total-registros-historico">0 registros</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Tipo</th>
+                                    <th>Placa</th>
+                                    <th>Quantidade</th>
+                                    <th>Responsável</th>
+                                    <th>Finalidade</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-historico-completo">
+                                <tr>
+                                    <td colspan="7" class="text-center">Nenhum lançamento registrado</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Guia RLS Modal -->
+    <div class="modal fade" id="modalGuiaRLS" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-shield-check"></i> Guia de Configuração RLS</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <strong>⚠️ IMPORTANTE:</strong> Siga estes passos para proteger seus dados no Supabase
+                    </div>
+                    
+                    <h6>PASSO 1: Acesse o Supabase</h6>
+                    <ol>
+                        <li>Vá em <a href="https://supabase.com" target="_blank">supabase.com</a></li>
+                        <li>Faça login e selecione seu projeto</li>
+                        <li>URL do seu projeto: <code>https://zuricdmdmqtsqfbysetd.supabase.co</code></li>
+                    </ol>
+                    
+                    <h6>PASSO 2: Configure RLS na tabela "placas"</h6>
+                    <ol>
+                        <li>No menu lateral, clique em <strong>"Table Editor"</strong></li>
+                        <li>Selecione a tabela <strong>"placas"</strong></li>
+                        <li>Vá na aba <strong>"Policies"</strong></li>
+                        <li>Clique em <strong>"Enable RLS"</strong> (Ativar RLS)</li>
+                        <li>Clique em <strong>"New Policy"</strong> → <strong>"Create a policy from scratch"</strong></li>
+                        <li>Preencha:
+                            <ul>
+                                <li><strong>Name:</strong> "Permitir todas operações"</li>
+                                <li><strong>Allowed operations:</strong> ✅ SELECT, ✅ INSERT, ✅ UPDATE, ✅ DELETE</li>
+                                <li><strong>Policy expression:</strong> <code>true</code></li>
+                            </ul>
+                        </li>
+                        <li>Clique em <strong>"Review"</strong> e depois <strong>"Save policy"</strong></li>
+                    </ol>
+                    
+                    <h6>PASSO 3: Repita para "historico_lancamentos"</h6>
+                    <ol>
+                        <li>Selecione a tabela <strong>"historico_lancamentos"</strong></li>
+                        <li>Repita exatamente os mesmos passos do PASSO 2</li>
+                    </ol>
+                    
+                    <h6>PASSO 4: Verifique a configuração</h6>
+                    <ol>
+                        <li>Volte para esta página</li>
+                        <li>O indicador de segurança deve ficar <span class="badge bg-success">VERDE</span></li>
+                        <li>Teste as funcionalidades do sistema</li>
+                    </ol>
+                    
+                    <div class="alert alert-success mt-3">
+                        <strong>🎉 PRONTO!</strong> Seu sistema agora está protegido pelo RLS.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary" onclick="verificarConfiguracaoRLS()">
+                        <i class="bi bi-arrow-clockwise"></i> Verificar Configuração
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Indicador de Segurança -->
+    <div class="security-indicator security-warning" id="security-indicator">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-shield-check me-2"></i>
+            <div>
+                <div>Status: <span id="security-status-text">Verificando...</span></div>
+                <small id="security-details">Configurando segurança</small>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        // 🔐 CONFIGURAÇÃO SEGURA DO SUPABASE - NOVAS CREDENCIAIS
+        const SUPABASE_URL = 'https://zuricdmdmqtsqfbysetd.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1cmljZG1kbXF0c3FmYnlzZXRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwMzQ3NjcsImV4cCI6MjA3NjYxMDc2N30.TPpbT35n6Mf9hrj7x5dA84Wv80Fh14C1zGHslC8nS-4';
+
+        // Inicializar Supabase APENAS com a chave anon
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Sistema de armazenamento local (fallback)
+        const STORAGE_KEYS = {
+            PLACAS: 'controle_placas_estoque',
+            HISTORICO: 'controle_placas_historico',
+            BACKUP: 'controle_placas_backup'
+        };
+
+        // Variáveis globais
+        let placas = [];
+        let historicoLancamentos = [];
+        let usandoSupabase = false;
+        let intervaloAtualizacao = null;
+
+        // Mapeamento de finalidades para nomes amigáveis
+        const FINALIDADES = {
+            'rancho_producao': 'Rancho de Produção',
+            'master': 'Master',
+            'retrabalho_adequacao': 'Retrabalho de adequação',
+            'adequacao': 'Adequação',
+            'devolucao_estoque': 'Devolução ao Estoque',
+            'sucata': 'Sucata',
+            'outros': 'Outros'
+        };
+
+        // Limite para estoque baixo
+        const LIMITE_ESTOQUE_BAIXO = 10;
+
+        // ========== FUNÇÕES DE SEGURANÇA ==========
+
+        // Função para verificar se o RLS está ativo
+        async function verificarConfiguracaoRLS() {
+            try {
+                console.log('🔍 Verificando configuração RLS...');
+                
+                // Atualizar indicador
+                document.getElementById('security-status-text').textContent = 'Verificando...';
+                document.getElementById('security-details').textContent = 'Testando configuração RLS';
+                document.getElementById('security-status').className = 'security-badge badge bg-warning';
+                document.getElementById('security-status').textContent = 'Verificando RLS';
+                document.getElementById('security-indicator').className = 'security-indicator security-warning';
+
+                // Testar operação na tabela placas
+                const { data: dataPlacas, error: errorPlacas } = await supabase
+                    .from('placas')
+                    .select('*')
+                    .limit(1);
+
+                // Testar operação na tabela historico_lancamentos
+                const { data: dataHistorico, error: errorHistorico } = await supabase
+                    .from('historico_lancamentos')
+                    .select('*')
+                    .limit(1);
+
+                let rlsConfigurado = true;
+                let detalhes = '';
+
+                // Analisar resultados
+                if (errorPlacas && errorPlacas.message.includes('row-level security')) {
+                    rlsConfigurado = false;
+                    detalhes = 'RLS não configurado na tabela placas';
+                } else if (errorHistorico && errorHistorico.message.includes('row-level security')) {
+                    rlsConfigurado = false;
+                    detalhes = 'RLS não configurado na tabela historico_lancamentos';
+                } else if (!errorPlacas && !errorHistorico) {
+                    // Se não há erro, o RLS pode não estar ativo
+                    rlsConfigurado = false;
+                    detalhes = 'RLS pode não estar ativo - dados acessíveis sem restrição';
+                } else {
+                    detalhes = 'RLS parece estar configurado corretamente';
+                }
+
+                // Atualizar interface baseada no resultado
+                if (rlsConfigurado) {
+                    document.getElementById('security-status-text').textContent = 'PROTEGIDO';
+                    document.getElementById('security-details').textContent = detalhes;
+                    document.getElementById('security-status').className = 'security-badge badge bg-success';
+                    document.getElementById('security-status').textContent = 'RLS Ativo';
+                    document.getElementById('security-indicator').className = 'security-indicator security-good';
+                    document.getElementById('alert-configuracao').style.display = 'none';
+                    
+                    console.log('✅ RLS configurado corretamente');
+                    mostrarMensagem('✅ Sistema protegido pelo RLS!', 'success');
+                } else {
+                    document.getElementById('security-status-text').textContent = 'CONFIGURAR RLS';
+                    document.getElementById('security-details').textContent = detalhes;
+                    document.getElementById('security-status').className = 'security-badge badge bg-danger';
+                    document.getElementById('security-status').textContent = 'Configurar RLS';
+                    document.getElementById('security-indicator').className = 'security-indicator security-danger';
+                    document.getElementById('alert-configuracao').style.display = 'block';
+                    
+                    console.warn('❌ RLS não configurado:', detalhes);
+                    mostrarMensagem('⚠️ Configure o RLS para proteger seus dados', 'warning');
+                }
+
+                return rlsConfigurado;
+            } catch (error) {
+                console.error('Erro ao verificar RLS:', error);
+                document.getElementById('security-status-text').textContent = 'ERRO';
+                document.getElementById('security-details').textContent = 'Erro na verificação';
+                document.getElementById('security-status').className = 'security-badge badge bg-danger';
+                document.getElementById('security-indicator').className = 'security-indicator security-danger';
+                return false;
+            }
+        }
+
+        // Função para mostrar guia RLS
+        function mostrarGuiaRLS() {
+            const modal = new bootstrap.Modal(document.getElementById('modalGuiaRLS'));
+            modal.show();
+        }
+
+        // ========== FUNÇÕES PRINCIPAIS DO SISTEMA ==========
+
+        // Função para mostrar mensagens
+        function mostrarMensagem(mensagem, tipo) {
+            const alert = document.getElementById('alert-atualizacao');
+            const mensagemElem = document.getElementById('mensagem-atualizacao');
+            
+            alert.className = `alert alert-${tipo} alert-dismissible fade show`;
+            mensagemElem.textContent = mensagem;
+            alert.style.display = 'block';
+            
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 5000);
+        }
+
+        // Função para atualizar status da conexão
+        function atualizarStatusConexao(conectado) {
+            const statusElement = document.getElementById('status-conexao');
+            const modoElement = document.getElementById('modo-conexao');
+            
+            if (conectado) {
+                statusElement.innerHTML = '<i class="bi bi-check-circle"></i> Conectado ao Supabase';
+                statusElement.className = 'status-online';
+                modoElement.textContent = 'Supabase';
+                usandoSupabase = true;
+            } else {
+                statusElement.innerHTML = '<i class="bi bi-x-circle"></i> Modo Local (Offline)';
+                statusElement.className = 'status-offline';
+                modoElement.textContent = 'LocalStorage';
+                usandoSupabase = false;
+            }
+        }
+
+        // Função para testar conexão com Supabase
+        async function testarConexaoSupabase() {
+            try {
+                const { data, error } = await supabase
+                    .from('placas')
+                    .select('count')
+                    .limit(1);
+                
+                if (error) throw error;
+                return true;
+            } catch (error) {
+                console.warn('Supabase offline, usando localStorage:', error.message);
+                return false;
+            }
+        }
+
+        // Sistema de armazenamento local (fallback)
+        function salvarNoLocalStorage(chave, dados) {
+            localStorage.setItem(chave, JSON.stringify(dados));
+        }
+
+        function carregarDoLocalStorage(chave) {
+            const dados = localStorage.getItem(chave);
+            return dados ? JSON.parse(dados) : [];
+        }
+
+        // Carregar placas do Supabase
+        async function carregarPlacasSupabase() {
+            try {
+                const { data, error } = await supabase
+                    .from('placas')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                return data || [];
+            } catch (error) {
+                console.error('Erro ao carregar placas:', error);
+                throw error;
+            }
+        }
+
+        // Carregar histórico do Supabase
+        async function carregarHistoricoSupabase() {
+            try {
+                const { data, error } = await supabase
+                    .from('historico_lancamentos')
+                    .select('*')
+                    .order('data', { ascending: false });
+                
+                if (error) throw error;
+                return data || [];
+            } catch (error) {
+                console.error('Erro ao carregar histórico:', error);
+                throw error;
+            }
+        }
+
+        // Salvar placa no Supabase
+        async function salvarPlacaSupabase(placaData) {
+            try {
+                let data, error;
+                
+                if (placaData.id) {
+                    ({ data, error } = await supabase
+                        .from('placas')
+                        .update(placaData)
+                        .eq('id', placaData.id));
+                } else {
+                    ({ data, error } = await supabase
+                        .from('placas')
+                        .insert([placaData])
+                        .select());
+                }
+                
+                if (error) throw error;
+                return data;
+            } catch (error) {
+                console.error('Erro ao salvar placa no Supabase:', error);
+                throw error;
+            }
+        }
+
+        // Salvar movimentação no Supabase
+        async function salvarMovimentacaoSupabase(dadosMovimentacao) {
+            try {
+                const { data, error } = await supabase
+                    .from('historico_lancamentos')
+                    .insert([{
+                        data: dadosMovimentacao.data,
+                        tipo: dadosMovimentacao.tipo,
+                        codigo: dadosMovimentacao.codigo,
+                        descricao: dadosMovimentacao.descricao,
+                        quantidade: dadosMovimentacao.quantidade,
+                        responsavel: dadosMovimentacao.responsavel,
+                        finalidade: dadosMovimentacao.finalidade
+                    }])
+                    .select();
+                
+                if (error) throw error;
+                return data;
+            } catch (error) {
+                console.error('Erro ao salvar movimentação no Supabase:', error);
+                throw error;
+            }
+        }
+
+        // Atualizar saldo da placa no Supabase
+        async function atualizarSaldoPlacaSupabase(placaId, novaQuantidade) {
+            try {
+                const { data, error } = await supabase
+                    .from('placas')
+                    .update({ quantidade: novaQuantidade })
+                    .eq('id', placaId);
+                
+                if (error) throw error;
+                return true;
+            } catch (error) {
+                console.error('Erro ao atualizar saldo no Supabase:', error);
+                throw error;
+            }
+        }
+
+        // Carregar dados iniciais
+        async function carregarDados() {
+            try {
+                const conexaoAtiva = await testarConexaoSupabase();
+                atualizarStatusConexao(conexaoAtiva);
+                
+                if (conexaoAtiva) {
+                    placas = await carregarPlacasSupabase();
+                    historicoLancamentos = await carregarHistoricoSupabase();
+                } else {
+                    placas = carregarDoLocalStorage(STORAGE_KEYS.PLACAS);
+                    historicoLancamentos = carregarDoLocalStorage(STORAGE_KEYS.HISTORICO);
+                }
+                
+                atualizarTabelaEstoque();
+                atualizarDashboard();
+                atualizarSelectPlacas();
+                atualizarTabelaHistorico();
+                
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+                mostrarMensagem('Erro ao carregar dados', 'danger');
+            }
+        }
+
+        // Atualizar tabela de estoque
+        function atualizarTabelaEstoque() {
+            const tbody = document.getElementById('tabela-estoque');
+            
+            if (placas.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center">Nenhuma placa cadastrada</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = placas.map(placa => {
+                const classeEstoque = placa.quantidade === 0 ? 'out-of-stock' : 
+                                    placa.quantidade <= LIMITE_ESTOQUE_BAIXO ? 'low-stock' : '';
+                
+                return `
+                    <tr class="${classeEstoque}">
+                        <td>${placa.codigo}</td>
+                        <td>${placa.descricao}</td>
+                        <td>${placa.quantidade}</td>
+                        <td>${placa.localizacao || '-'}</td>
+                        <td>
+                            ${placa.quantidade === 0 ? 
+                                '<span class="badge bg-danger">Sem Estoque</span>' : 
+                                placa.quantidade <= LIMITE_ESTOQUE_BAIXO ? 
+                                '<span class="badge bg-warning text-dark">Estoque Baixo</span>' : 
+                                '<span class="badge bg-success">Em Estoque</span>'}
+                        </td>
+                        <td class="action-buttons">
+                            <button class="btn btn-sm btn-outline-primary" onclick="editarPlaca('${placa.id}')">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="excluirPlacaConfirmacao('${placa.id}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Atualizar dashboard
+        function atualizarDashboard() {
+            document.getElementById('total-placas').textContent = placas.reduce((total, placa) => total + placa.quantidade, 0);
+            document.getElementById('tipos-placas').textContent = placas.length;
+            document.getElementById('baixo-estoque').textContent = placas.filter(p => p.quantidade > 0 && p.quantidade <= LIMITE_ESTOQUE_BAIXO).length;
+            document.getElementById('sem-estoque').textContent = placas.filter(p => p.quantidade === 0).length;
+            
+            atualizarAlertasEstoque();
+            atualizarGraficoEstoque();
+        }
+
+        // Atualizar alertas de estoque
+        function atualizarAlertasEstoque() {
+            const alertasContainer = document.getElementById('alertas-estoque');
+            const placasBaixoEstoque = placas.filter(p => p.quantidade > 0 && p.quantidade <= LIMITE_ESTOQUE_BAIXO);
+            const placasSemEstoque = placas.filter(p => p.quantidade === 0);
+            
+            let alertasHTML = '';
+            
+            if (placasSemEstoque.length > 0) {
+                alertasHTML += `
+                    <div class="alert alert-danger">
+                        <h6><i class="bi bi-exclamation-triangle"></i> Placas sem estoque</h6>
+                        <ul class="mb-0">
+                            ${placasSemEstoque.map(p => `<li>${p.codigo} - ${p.descricao}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+            
+            if (placasBaixoEstoque.length > 0) {
+                alertasHTML += `
+                    <div class="alert alert-warning">
+                        <h6><i class="bi bi-exclamation-triangle"></i> Placas com estoque baixo</h6>
+                        <ul class="mb-0">
+                            ${placasBaixoEstoque.map(p => `<li>${p.codigo} - ${p.descricao} (${p.quantidade} unidades)</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+            
+            if (alertasHTML === '') {
+                alertasHTML = '<div class="alert alert-success"><i class="bi bi-check-circle"></i> Todas as placas estão com estoque adequado</div>';
+            }
+            
+            alertasContainer.innerHTML = alertasHTML;
+        }
+
+        // Atualizar gráfico de estoque
+        function atualizarGraficoEstoque() {
+            const ctx = document.getElementById('estoqueChart').getContext('2d');
+            const tipoGrafico = document.getElementById('tipo-grafico').value;
+            
+            if (window.estoqueChartInstance) {
+                window.estoqueChartInstance.destroy();
+            }
+            
+            const labels = placas.map(p => p.codigo);
+            const dados = placas.map(p => p.quantidade);
+            const cores = placas.map(p => {
+                if (p.quantidade === 0) return '#dc3545';
+                if (p.quantidade <= LIMITE_ESTOQUE_BAIXO) return '#ffc107';
+                return '#00ff88';
+            });
+            
+            window.estoqueChartInstance = new Chart(ctx, {
+                type: tipoGrafico,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Quantidade em Estoque',
+                        data: dados,
+                        backgroundColor: tipoGrafico === 'pie' || tipoGrafico === 'doughnut' ? cores : '#00ff88',
+                        borderColor: tipoGrafico === 'line' ? '#00ff88' : '#333',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: '#f8f9fa'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Estoque de Placas Eletrônicas',
+                            color: '#f8f9fa'
+                        }
+                    },
+                    scales: tipoGrafico === 'bar' || tipoGrafico === 'line' ? {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#f8f9fa'
+                            },
+                            grid: {
+                                color: '#333'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#f8f9fa'
+                            },
+                            grid: {
+                                color: '#333'
+                            }
+                        }
+                    } : {}
+                }
+            });
+        }
+
+        // Atualizar select de placas
+        function atualizarSelectPlacas() {
+            const select = document.getElementById('placa-select');
+            select.innerHTML = '<option value="">Selecione uma placa</option>';
+            
+            placas.forEach(placa => {
+                const option = document.createElement('option');
+                option.value = placa.id;
+                option.textContent = `${placa.codigo} - ${placa.descricao} (${placa.quantidade} em estoque)`;
+                select.appendChild(option);
+            });
+        }
+
+        // Atualizar tabela de histórico
+        function atualizarTabelaHistorico() {
+            const tbody = document.getElementById('tabela-historico-completo');
+            const totalElement = document.getElementById('total-registros-historico');
+            
+            totalElement.textContent = `${historicoLancamentos.length} registros`;
+            
+            if (historicoLancamentos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center">Nenhum lançamento registrado</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = historicoLancamentos.map(lancamento => {
+                const tipoBadge = lancamento.tipo === 'entrada' ? 
+                    '<span class="badge entrada-badge">Entrada</span>' : 
+                    '<span class="badge saida-badge">Saída</span>';
+                
+                return `
+                    <tr>
+                        <td>${lancamento.data}</td>
+                        <td>${tipoBadge}</td>
+                        <td>${lancamento.codigo} - ${lancamento.descricao}</td>
+                        <td>${lancamento.quantidade}</td>
+                        <td>${lancamento.responsavel}</td>
+                        <td>${FINALIDADES[lancamento.finalidade] || lancamento.finalidade}</td>
+                        <td class="action-buttons">
+                            <button class="btn btn-sm btn-outline-primary" onclick="editarLancamento('${lancamento.id}')">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="excluirLancamentoConfirmacao('${lancamento.id}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ========== FUNÇÕES DE NAVEGAÇÃO ==========
+
+        function irParaEstoque() {
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            document.querySelector('.nav-link[data-section="estoque"]').classList.add('active');
+            document.querySelectorAll('.page-section').forEach(section => {
+                section.classList.remove('active-section');
+            });
+            document.getElementById('estoque').classList.add('active-section');
+        }
+
+        function abrirCadastroPlaca() {
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            document.querySelector('.nav-link[data-section="cadastro-placa"]').classList.add('active');
+            document.querySelectorAll('.page-section').forEach(section => {
+                section.classList.remove('active-section');
+            });
+            document.getElementById('cadastro-placa').classList.add('active-section');
+            
+            document.getElementById('form-placa').reset();
+            document.getElementById('placa-id').value = '';
+            document.getElementById('titulo-cadastro-placa').textContent = 'Cadastrar Nova Placa';
+        }
+
+        function cancelarCadastroPlaca() {
+            irParaEstoque();
+        }
+
+        function cancelarMovimentacao() {
+            document.getElementById('form-movimentacao').reset();
+            document.getElementById('data-movimentacao').value = new Date().toISOString().split('T')[0];
+        }
+
+        // ========== FUNÇÕES DE EXPORTAÇÃO ==========
+
+        function exportarEstoqueExcel() {
+            if (placas.length === 0) {
+                mostrarMensagem('Não há dados para exportar!', 'warning');
+                return;
+            }
+            
+            const dadosExportacao = placas.map(placa => ({
+                'Código': placa.codigo,
+                'Descrição': placa.descricao,
+                'Quantidade': placa.quantidade,
+                'Localização': placa.localizacao || '',
+                'Observações': placa.observacoes || '',
+                'Status': placa.quantidade === 0 ? 'Sem Estoque' : 
+                         placa.quantidade <= LIMITE_ESTOQUE_BAIXO ? 'Estoque Baixo' : 'Em Estoque'
+            }));
+            
+            const ws = XLSX.utils.json_to_sheet(dadosExportacao);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Estoque de Placas');
+            
+            const nomeArquivo = `estoque_placas_${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(wb, nomeArquivo);
+            
+            mostrarMensagem('Estoque exportado com sucesso!', 'success');
+        }
+
+        function exportarHistoricoExcel() {
+            if (historicoLancamentos.length === 0) {
+                mostrarMensagem('Não há dados para exportar!', 'warning');
+                return;
+            }
+            
+            const dadosExportacao = historicoLancamentos.map(lancamento => ({
+                'Data': lancamento.data,
+                'Tipo': lancamento.tipo === 'entrada' ? 'Entrada' : 'Saída',
+                'Código': lancamento.codigo,
+                'Descrição': lancamento.descricao,
+                'Quantidade': lancamento.quantidade,
+                'Responsável': lancamento.responsavel,
+                'Finalidade': FINALIDADES[lancamento.finalidade] || lancamento.finalidade
+            }));
+            
+            const ws = XLSX.utils.json_to_sheet(dadosExportacao);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Histórico de Lançamentos');
+            
+            const nomeArquivo = `historico_lancamentos_${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(wb, nomeArquivo);
+            
+            mostrarMensagem('Histórico exportado com sucesso!', 'success');
+        }
+
+        function fazerBackupDados() {
+            const backup = {
+                placas: placas,
+                historico: historicoLancamentos,
+                dataBackup: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `backup_estoque_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            mostrarMensagem('Backup criado com sucesso!', 'success');
+        }
+
+        // ========== INICIALIZAÇÃO ==========
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Configurar data no formulário de movimentação
+            document.getElementById('data-movimentacao').value = new Date().toISOString().split('T')[0];
+            
+            // Event listeners de navegação
+            document.querySelectorAll('.nav-link[data-section]').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const sectionId = this.getAttribute('data-section');
+                    document.querySelectorAll('.page-section').forEach(section => {
+                        section.classList.remove('active-section');
+                    });
+                    document.getElementById(sectionId).classList.add('active-section');
+                });
+            });
+            
+            // Event listener para mudança de tipo de gráfico
+            document.getElementById('tipo-grafico').addEventListener('change', atualizarGraficoEstoque);
+            
+            // Inicializar sistema
+            await carregarDados();
+            await verificarConfiguracaoRLS();
+            
+            // Configurar atualização automática
+            intervaloAtualizacao = setInterval(async () => {
+                await carregarDados();
+            }, 30000);
+            
+            console.log('🔒 Sistema inicializado com verificações de segurança');
+        });
+    </script>
+</body>
+</html>
