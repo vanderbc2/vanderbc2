@@ -239,6 +239,11 @@
             border-color: #1e7e34;
             color: white;
         }
+        
+        /* Estilo para quando o modal está aberto */
+        .modal-backdrop.show {
+            opacity: 0.8 !important;
+        }
     </style>
 </head>
 <body>
@@ -703,6 +708,7 @@
         let historicoLancamentos = [];
         let usandoSupabase = false;
         let intervaloAtualizacao = null;
+        let loginModal = null;
 
         // Mapeamento de finalidades para nomes amigáveis
         const FINALIDADES = {
@@ -735,15 +741,31 @@
                 if (lembrarSenha) {
                     localStorage.setItem(SENHA_STORAGE_KEY, btoa(SENHA_ACESSO));
                 }
+                fecharModalLogin();
                 mostrarSistema();
             } else {
                 mostrarMensagem('❌ Senha incorreta', 'danger');
+                // Limpar campo de senha
+                document.getElementById('login-senha').value = '';
+                document.getElementById('login-senha').focus();
+            }
+        }
+
+        // Função para fechar o modal de login corretamente
+        function fecharModalLogin() {
+            if (loginModal) {
+                loginModal.hide();
+                // Remover o backdrop do modal
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(backdrop => backdrop.remove());
+                // Restaurar o scroll do body
+                document.body.style.overflow = 'auto';
+                document.body.style.paddingRight = '0';
             }
         }
 
         // Função para mostrar o sistema após autenticação
         function mostrarSistema() {
-            document.getElementById('login-modal').style.display = 'none';
             document.getElementById('main-navbar').style.display = 'flex';
             
             // Inicializar o sistema
@@ -785,6 +807,13 @@
             
             // Event listener para mudança de tipo de gráfico
             document.getElementById('tipo-grafico').addEventListener('change', atualizarGraficoEstoque);
+            
+            // Event listener para tecla Enter no login
+            document.getElementById('login-senha').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    verificarSenha();
+                }
+            });
             
             // Carregar dados iniciais
             carregarDados().then(() => {
@@ -1632,12 +1661,14 @@
         // ========== INICIALIZAÇÃO ==========
 
         document.addEventListener('DOMContentLoaded', function() {
+            // Inicializar o modal de login
+            loginModal = new bootstrap.Modal(document.getElementById('login-modal'));
+            
             // Verificar autenticação
             if (verificarAutenticacao()) {
                 mostrarSistema();
             } else {
                 // Mostrar modal de login
-                const loginModal = new bootstrap.Modal(document.getElementById('login-modal'));
                 loginModal.show();
             }
         });
