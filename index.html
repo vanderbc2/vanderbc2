@@ -38,11 +38,44 @@
         }
         
         .navbar-brand, .nav-link {
-            color: var(--primary-color) !important;
+            color: var(--text-light) !important;
+            transition: all 0.3s ease;
+        }
+        
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        
+        .nav-link {
+            position: relative;
+            padding: 0.5rem 1rem;
+            margin: 0 0.2rem;
+            border-radius: 5px;
+            transition: all 0.3s ease;
         }
         
         .nav-link:hover {
-            color: var(--primary-dark) !important;
+            color: var(--primary-color) !important;
+            background-color: rgba(0, 255, 136, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 255, 136, 0.2);
+        }
+        
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background-color: var(--primary-color);
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+        
+        .nav-link:hover::after {
+            width: 80%;
         }
         
         .nav-link.active {
@@ -50,6 +83,12 @@
             color: var(--primary-color) !important;
             background-color: rgba(0, 255, 136, 0.1);
             border-radius: 5px;
+            transform: translateY(-1px);
+        }
+        
+        .nav-link.active::after {
+            width: 80%;
+            background-color: var(--primary-color);
         }
         
         .status-online {
@@ -80,6 +119,29 @@
             background-color: #000;
             color: var(--primary-color);
             border-color: #333;
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.3s ease;
+        }
+        
+        .table th:hover {
+            background-color: rgba(0, 255, 136, 0.1);
+        }
+        
+        .table th.sortable::after {
+            content: '↕';
+            margin-left: 5px;
+            opacity: 0.5;
+        }
+        
+        .table th.sort-asc::after {
+            content: '↑';
+            opacity: 1;
+        }
+        
+        .table th.sort-desc::after {
+            content: '↓';
+            opacity: 1;
         }
         
         .table td {
@@ -109,12 +171,15 @@
             border-color: var(--primary-color);
             color: #000;
             font-weight: bold;
+            transition: all 0.3s ease;
         }
         
         .btn-primary:hover {
             background-color: var(--primary-dark);
             border-color: var(--primary-dark);
             color: #000;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 255, 136, 0.3);
         }
         
         .dashboard-card {
@@ -204,7 +269,7 @@
         
         .page-title {
             margin: 0;
-            color: var(--primary-color);
+            color: var(--laranja-laboratorio); /* Alterado para laranja */
         }
         
         .lab-subtitle {
@@ -232,17 +297,75 @@
             background-color: #28a745;
             border-color: #28a745;
             color: white;
+            transition: all 0.3s ease;
         }
         
         .btn-export:hover {
             background-color: #218838;
             border-color: #1e7e34;
             color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
         }
         
         /* Estilo para quando o modal está aberto */
         .modal-backdrop.show {
             opacity: 0.8 !important;
+        }
+        
+        /* Animação para o botão de logout */
+        .btn-outline-warning {
+            transition: all 0.3s ease;
+        }
+        
+        .btn-outline-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+        }
+        
+        /* Efeito de brilho no hover para os itens do menu */
+        .nav-link:hover {
+            filter: brightness(1.2);
+        }
+        
+        /* Estilos para o campo de senha */
+        .password-container {
+            position: relative;
+        }
+        
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+        
+        .password-toggle:hover {
+            color: var(--text-light);
+        }
+        
+        .capslock-warning {
+            color: #ffc107;
+            font-size: 0.8rem;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        /* Estilos para ordenação */
+        .sort-indicator {
+            margin-left: 5px;
+            font-size: 0.8em;
+        }
+        
+        .sort-options {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
         }
     </style>
 </head>
@@ -258,7 +381,15 @@
                     <form id="login-form">
                         <div class="mb-3">
                             <label for="login-senha" class="form-label">Senha de Acesso</label>
-                            <input type="password" class="form-control" id="login-senha" required autocomplete="off">
+                            <div class="password-container">
+                                <input type="password" class="form-control" id="login-senha" required autocomplete="off">
+                                <button type="button" class="password-toggle" id="toggle-password">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <div class="capslock-warning" id="capslock-warning">
+                                <i class="bi bi-exclamation-triangle"></i> Caps Lock está ativado
+                            </div>
                         </div>
                         <div class="mb-3 form-check">
                             <input type="checkbox" class="form-check-input" id="lembrar-senha">
@@ -482,6 +613,20 @@
                 <h2 class="page-title">Estoque de Placas Eletrônicas</h2>
                 <h3 class="lab-subtitle">Laboratório de Eletrônica</h3>
             </div>
+            
+            <!-- Opções de ordenação -->
+            <div class="sort-options">
+                <span>Ordenar por:</span>
+                <select id="ordenar-estoque" class="form-select form-select-sm" style="width: auto;">
+                    <option value="codigo-asc">Código (A-Z)</option>
+                    <option value="codigo-desc">Código (Z-A)</option>
+                    <option value="quantidade-asc">Quantidade (Menor-Maior)</option>
+                    <option value="quantidade-desc">Quantidade (Maior-Menor)</option>
+                    <option value="descricao-asc">Descrição (A-Z)</option>
+                    <option value="descricao-desc">Descrição (Z-A)</option>
+                </select>
+            </div>
+            
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">Lista de Placas em Estoque</h5>
@@ -499,9 +644,9 @@
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Código</th>
-                                    <th>Descrição</th>
-                                    <th>Quantidade</th>
+                                    <th data-sort="codigo" class="sortable sort-asc">Código</th>
+                                    <th data-sort="descricao" class="sortable">Descrição</th>
+                                    <th data-sort="quantidade" class="sortable">Quantidade</th>
                                     <th>Localização</th>
                                     <th>Status</th>
                                     <th>Ações</th>
@@ -683,11 +828,11 @@
     <script>
         // ========== CONFIGURAÇÃO DE SEGURANÇA ==========
         
-        // Configuração do Supabase
-        const SUPABASE_URL = 'https://gsmbnpocopxqxvgilmbu.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdzbWJucG9jb3B4cXh2Z2lsbWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwNDgwNjMsImV4cCI6MjA3NjYyNDA2M30.CSnPADpx3ZFZG2t2AKYad8aXJ7s3xEAYt0hKVNcJMqE';
+        // Configuração do Supabase ATUALIZADA
+        const SUPABASE_URL = 'https://vkpchuujxezrgkvbyqqa.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrcGNodXVqeGV6cmdrdmJ5cXFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwNjQzNDMsImV4cCI6MjA3NjY0MDM0M30.aMm2oLHO0iesK4PRqqKvdstSBqWmh84gJGFS67DR1Fw';
         
-        // Senha de acesso CORRIGIDA
+        // Senha de acesso
         const SENHA_ACESSO = "lab123@";
         
         // Chave para armazenamento da senha
@@ -708,6 +853,7 @@
         let usandoSupabase = false;
         let intervaloAtualizacao = null;
         let loginModal = null;
+        let ordenacaoAtual = { campo: 'codigo', direcao: 'asc' };
 
         // Mapeamento de finalidades para nomes amigáveis
         const FINALIDADES = {
@@ -723,7 +869,7 @@
         // Limite para estoque baixo
         const LIMITE_ESTOQUE_BAIXO = 10;
 
-        // ========== SISTEMA DE SEGURANÇA CORRIGIDO ==========
+        // ========== SISTEMA DE SEGURANÇA ==========
 
         // Função para verificar se o usuário está autenticado
         function verificarAutenticacao() {
@@ -739,7 +885,7 @@
             return false;
         }
 
-        // Função para verificar senha - CORRIGIDA
+        // Função para verificar senha
         function verificarSenha() {
             const senhaInput = document.getElementById('login-senha').value;
             const lembrarSenha = document.getElementById('lembrar-senha').checked;
@@ -758,7 +904,7 @@
             }
         }
 
-        // Função para fechar o modal de login corretamente - CORRIGIDA
+        // Função para fechar o modal de login corretamente
         function fecharModalLogin() {
             const modalElement = document.getElementById('login-modal');
             const modalInstance = bootstrap.Modal.getInstance(modalElement);
@@ -791,9 +937,29 @@
             location.reload();
         }
 
-        // ========== INICIALIZAÇÃO CORRIGIDA ==========
+        // ========== INICIALIZAÇÃO ==========
 
         document.addEventListener('DOMContentLoaded', function() {
+            // Configurar toggle de senha
+            const togglePassword = document.getElementById('toggle-password');
+            const passwordInput = document.getElementById('login-senha');
+            
+            togglePassword.addEventListener('click', function() {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                this.innerHTML = type === 'password' ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
+            });
+            
+            // Detectar Caps Lock
+            passwordInput.addEventListener('keyup', function(e) {
+                const capsWarning = document.getElementById('capslock-warning');
+                if (e.getModifierState && e.getModifierState('CapsLock')) {
+                    capsWarning.style.display = 'block';
+                } else {
+                    capsWarning.style.display = 'none';
+                }
+            });
+            
             // Verificar autenticação
             if (verificarAutenticacao()) {
                 mostrarSistema();
@@ -819,6 +985,100 @@
                 }
             });
         });
+
+        // ========== FUNÇÕES DE ORDENAÇÃO ==========
+
+        // Função para ordenar placas
+        function ordenarPlacas(campo, direcao) {
+            const placasOrdenadas = [...placas];
+            
+            placasOrdenadas.sort((a, b) => {
+                let valorA, valorB;
+                
+                switch(campo) {
+                    case 'codigo':
+                        valorA = a.codigo.toLowerCase();
+                        valorB = b.codigo.toLowerCase();
+                        break;
+                    case 'descricao':
+                        valorA = a.descricao.toLowerCase();
+                        valorB = b.descricao.toLowerCase();
+                        break;
+                    case 'quantidade':
+                        valorA = a.quantidade;
+                        valorB = b.quantidade;
+                        break;
+                    default:
+                        return 0;
+                }
+                
+                if (typeof valorA === 'string') {
+                    if (direcao === 'asc') {
+                        return valorA.localeCompare(valorB);
+                    } else {
+                        return valorB.localeCompare(valorA);
+                    }
+                } else {
+                    if (direcao === 'asc') {
+                        return valorA - valorB;
+                    } else {
+                        return valorB - valorA;
+                    }
+                }
+            });
+            
+            return placasOrdenadas;
+        }
+
+        // Função para aplicar ordenação
+        function aplicarOrdenacao() {
+            const selectOrdenacao = document.getElementById('ordenar-estoque');
+            const valor = selectOrdenacao.value;
+            const [campo, direcao] = valor.split('-');
+            
+            ordenacaoAtual = { campo, direcao };
+            const placasOrdenadas = ordenarPlacas(campo, direcao);
+            
+            // Atualizar tabela com dados ordenados
+            atualizarTabelaEstoqueComDados(placasOrdenadas);
+            
+            // Atualizar indicadores de ordenação nos cabeçalhos
+            atualizarIndicadoresOrdenacao(campo, direcao);
+        }
+
+        // Função para atualizar indicadores de ordenação
+        function atualizarIndicadoresOrdenacao(campoAtivo, direcaoAtiva) {
+            const headers = document.querySelectorAll('th[data-sort]');
+            
+            headers.forEach(header => {
+                header.classList.remove('sort-asc', 'sort-desc');
+                
+                if (header.getAttribute('data-sort') === campoAtivo) {
+                    header.classList.add(`sort-${direcaoAtiva}`);
+                }
+            });
+        }
+
+        // Função para ordenar ao clicar no cabeçalho
+        function ordenarPorCampo(campo) {
+            let direcao = 'asc';
+            
+            if (ordenacaoAtual.campo === campo) {
+                direcao = ordenacaoAtual.direcao === 'asc' ? 'desc' : 'asc';
+            }
+            
+            ordenacaoAtual = { campo, direcao };
+            const placasOrdenadas = ordenarPlacas(campo, direcao);
+            
+            // Atualizar tabela com dados ordenados
+            atualizarTabelaEstoqueComDados(placasOrdenadas);
+            
+            // Atualizar indicadores de ordenação
+            atualizarIndicadoresOrdenacao(campo, direcao);
+            
+            // Atualizar select de ordenação
+            document.getElementById('ordenar-estoque').value = `${campo}-${direcao}`;
+        }
 
         // ========== FUNÇÕES RESTANTES ==========
 
@@ -851,6 +1111,17 @@
             
             // Event listener para mudança de tipo de gráfico
             document.getElementById('tipo-grafico').addEventListener('change', atualizarGraficoEstoque);
+            
+            // Event listener para ordenação
+            document.getElementById('ordenar-estoque').addEventListener('change', aplicarOrdenacao);
+            
+            // Event listeners para ordenação por clique nos cabeçalhos
+            document.querySelectorAll('th[data-sort]').forEach(header => {
+                header.addEventListener('click', function() {
+                    const campo = this.getAttribute('data-sort');
+                    ordenarPorCampo(campo);
+                });
+            });
             
             // Carregar dados iniciais
             carregarDados().then(() => {
@@ -1132,16 +1403,16 @@
             }
         }
 
-        // Atualizar tabela de estoque
-        function atualizarTabelaEstoque() {
+        // Atualizar tabela de estoque com dados específicos
+        function atualizarTabelaEstoqueComDados(dadosPlacas) {
             const tbody = document.getElementById('tabela-estoque');
             
-            if (placas.length === 0) {
+            if (dadosPlacas.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" class="text-center">Nenhuma placa cadastrada</td></tr>';
                 return;
             }
             
-            tbody.innerHTML = placas.map(placa => {
+            tbody.innerHTML = dadosPlacas.map(placa => {
                 const classeEstoque = placa.quantidade === 0 ? 'out-of-stock' : 
                                     placa.quantidade <= LIMITE_ESTOQUE_BAIXO ? 'low-stock' : '';
                 
@@ -1169,6 +1440,13 @@
                     </tr>
                 `;
             }).join('');
+        }
+
+        // Atualizar tabela de estoque (mantida para compatibilidade)
+        function atualizarTabelaEstoque() {
+            const placasOrdenadas = ordenarPlacas(ordenacaoAtual.campo, ordenacaoAtual.direcao);
+            atualizarTabelaEstoqueComDados(placasOrdenadas);
+            atualizarIndicadoresOrdenacao(ordenacaoAtual.campo, ordenacaoAtual.direcao);
         }
 
         // Atualizar dashboard
